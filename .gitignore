@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+
+# Build output
+build/
+dist/
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# npm package lock file
+package-lock.json
+
+# Optional: Ignore local configuration files
+*.local
+
+# Optional: Ignore coverage directory
+coverage/
