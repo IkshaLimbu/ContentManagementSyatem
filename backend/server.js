@@ -4,12 +4,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const db = require('./models');
-const { VIRTUAL } = require('sequelize');
+const { Op } = require('sequelize');
 const Post = db.Post;
 const Users = db.Users;
 
 require('dotenv').config();
-const secret = process.env.JWSTOKEN; // Use your actual secret key
+const secret = process.env.JWSTOKEN; 
 console.log('JWT Secret Key:', secret);
 
 const app = express();
@@ -29,7 +29,7 @@ const createAdmin = async () => {
             const hashedPassword = await bcrypt.hash('admin_password', saltRounds);
             await Users.create({
                 name: 'admin',
-                email: 'admin@example.com',
+                email: 'admin@gmail.com',
                 password: hashedPassword,
                 type: 'admin'
             });
@@ -59,7 +59,7 @@ const vreifyUser = (req, res, next) => {
             console.log("decoded id in verify user middleware", decoded.id)
             const user = await Users.findByPk(decoded.id);
             if (!user) {
-                return res.status(404).json({ error: 'User not found' });
+                return res.status(404).json({ error: 'User not found' }, {message: "user not found"});
             }
 
             // Attach user information to request
@@ -78,15 +78,15 @@ const vreifyUser = (req, res, next) => {
 
 
 
-const testToken = jwt.sign({ id: 1, name: 'testUser', type: 'user' }, secret, { expiresIn: '1d' });
+// const testToken = jwt.sign({ id: 1, name: 'testUser', type: 'user' }, secret, { expiresIn: '1d' });
 
-jwt.verify(testToken, secret, (err, decoded) => {
-    if (err) {
-        console.error('Test token verification error:', err);
-    } else {
-        console.log('Test token decoded:', decoded); // Should print { id: 1, name: 'testUser', type: 'user', iat: <timestamp>, exp: <timestamp> }
-    }
-});
+// jwt.verify(testToken, secret, (err, decoded) => {
+//     if (err) {
+//         console.error('Test token verification error:', err);
+//     } else {
+//         console.log('Test token decoded:', decoded); // Should print { id: 1, name: 'testUser', type: 'user', iat: <timestamp>, exp: <timestamp> }
+//     }
+// });
 
 
 
@@ -137,11 +137,15 @@ app.get('/', async (req, res) => {
 app.post('/login', async (req, res) => {
     const { email, password } = req.body;
     const users = await Users.findOne({ where: { email: email } });
-
-    if (users === null) {
-        return res.status(500).json({ error: "Cannot find the email" });
+     
+    if (!email || !password){
+        return res.status(400).json({message: "Please fill all the fields"})
     }
 
+    if (users === null) {
+        return res.status(500).json({ message: "Cannot find the email" });
+    }
+    
     const isMatch = await bcrypt.compare(password, users.password);
     if (!isMatch) {
         return res.status(401).json({ Error: "Password not matched" });
@@ -159,12 +163,33 @@ app.post('/login', async (req, res) => {
     return res.json({ Status: "Success", userType: users.type, name: users.name, posts: posts, token: token });
 });
 
-// Add more routes and middleware as needed
 
-app.post('/register', (req, res) => {
+
+app.post('/register', async(req, res) => {
     //console.log('Request body:', req.body);
     const saltRounds = 10;
     const { name, email, password } = req.body;
+    const existUser = await Users.findOne({
+        where:{
+            email :{
+                [Op.eq]:email,
+            },
+        },
+    });
+
+    if (!email || !name || !password){
+        return res.status(400).json({message : "Please fill all the fields"})
+    }
+    if (existUser){
+        return res.status(400).json({message:"Email is already registered"})
+    }
+    if (password.length <= 8){
+        return res.status(400).json({message: "Length of password should not be less than 8"})
+    }
+    const passwordStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*"'()+,-./:;<=>?[\]^_`{|}~])(?=.{8,})/;
+    if (!passwordStrengthRegex.test(password)){
+        return res.status(400).json({message: "Password is weak"})
+    }
 
     bcrypt.hash(password.toString(), saltRounds, (err, hash) => {
         if (err) {
@@ -188,11 +213,11 @@ app.post('/register', (req, res) => {
     });
 });
 
-// Define the endpoint to get a post by ID
+// endpoint to get a post by ID
 app.get('/get/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const post = await Post.findByPk(id); // Adjust if you're using a different method to find the post
+        const post = await Post.findByPk(id); 
         if (!post) {
             return res.status(404).json({ Error: 'Post not found' });
         }
